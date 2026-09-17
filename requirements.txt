@@ -1,0 +1,12 @@
+python-dotenv
+pandas
+numpy 
+transformers 
+langchain
+torch 
+lancedb 
+sentence-transformers 
+fastapi
+uvicorn[standard]
+pydantic
+pyyaml 

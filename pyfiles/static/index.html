@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KalamMinds Lab — Retrieval Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark"></span>
+        <div>
+          <p class="eyebrow">KalamMinds AI Research Lab</p>
+          <h1>Retrieval Console</h1>
+        </div>
+      </div>
+      <div class="top-meta">
+        <div class="status" id="statusPill">
+          <span class="dot"></span>
+          <span id="statusLabel">Checking system</span>
+        </div>
+        <a class="ghost" href="/docs" target="_blank" rel="noreferrer">API schema</a>
+      </div>
+    </header>
+
+    <aside class="rail">
+      <section>
+        <h2>System</h2>
+        <dl class="facts" id="systemFacts">
+          <div><dt>LLM</dt><dd id="factModel">—</dd></div>
+          <div><dt>Embed</dt><dd id="factEmbed">—</dd></div>
+          <div><dt>Device</dt><dd id="factDevice">—</dd></div>
+        </dl>
+      </section>
+
+      <section>
+        <h2>Mode</h2>
+        <div class="segment" role="tablist">
+          <button class="seg on" data-mode="rag" type="button">RAG query</button>
+          <button class="seg" data-mode="generate" type="button">Direct generate</button>
+        </div>
+        <p class="hint" id="modeHint">Answers are grounded in the vector store, with citations.</p>
+      </section>
+
+      <section>
+        <h2>Generation</h2>
+        <label>Temperature <span id="tempVal">0.4</span>
+          <input id="temperature" type="range" min="0" max="1.5" step="0.05" />
+        </label>
+        <label>Max tokens <span id="tokVal">1024</span>
+          <input id="maxTokens" type="range" min="64" max="2048" step="64" />
+        </label>
+        <label class="check"><input id="doSample" type="checkbox" checked /> Sample tokens</label>
+      </section>
+
+      <section id="ragControls">
+        <h2>Retriever</h2>
+        <label>Top-k <span id="kVal">1</span>
+          <input id="topK" type="range" min="1" max="8" step="1" />
+        </label>
+        <label>Min score <span id="scoreVal">0.20</span>
+          <input id="minScore" type="range" min="0" max="1" step="0.05" />
+        </label>
+        <label class="check"><input id="useHistory" type="checkbox" checked /> Conversation memory</label>
+        <label class="check"><input id="summarize" type="checkbox" /> Two-sentence summary</label>
+      </section>
+
+      <button class="ghost full" id="clearBtn" type="button">Clear session</button>
+    </aside>
+
+    <main class="stage">
+      <div class="thread" id="thread">
+        <div class="empty" id="emptyState">
+          <p class="eyebrow">Session idle</p>
+          <h2>Ask a research question</h2>
+          <p>Use RAG to retrieve from the attention-paper index, or generate directly from the local instruction model.</p>
+        </div>
+      </div>
+
+      <form class="composer" id="composer">
+        <textarea id="prompt" rows="3" placeholder="Enter a query. Shift+Enter for a new line." required></textarea>
+        <div class="composer-bar">
+          <span id="runMeta">Ready</span>
+          <button id="send" type="submit">Run</button>
+        </div>
+      </form>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
