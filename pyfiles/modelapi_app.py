@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 
 import torch
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
@@ -38,18 +38,15 @@ tokenizer = None
 model = None
 pipeline = None
 
-
 class GenerateRequest(BaseModel):
     prompt: str = Field(..., min_length=1)
     max_new_tokens: int = Field(default=LLM_MAX_NEW_TOKENS, ge=1, le=4096)
     temperature: float = Field(default=LLM_TEMPERATURE, ge=0.0, le=2.0)
     do_sample: bool = LLM_DO_SAMPLE
 
-
 class ChatMessage(BaseModel):
     role: str
     content: str
-
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(..., min_length=1)
@@ -93,6 +90,8 @@ async def lifespan(app: FastAPI):
     global processor, tokenizer, model, pipeline
     logger.info(f"Loading {config['llm']['model_name']} from {MODEL_PATH}")
     processor, tokenizer, model = load_model(MODEL_PATH)
+    from query_variationar import attach_llm
+    attach_llm(processor, tokenizer, model)
     pipeline = AdvancedRAGPipeline(
         rag_retrieve,
         model,
@@ -136,9 +135,7 @@ SWAGGER_THEME_CSS = """
 </style>
 """
 
-
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-
 
 @app.get("/", include_in_schema=False)
 def index():
@@ -175,8 +172,7 @@ def public_config():
         },
     }
 
-
-#-----------------------------
+#----------------------------
 @app.get("/health")
 def health():
     device = str(model.device) if model is not None else "unloaded"
@@ -212,7 +208,7 @@ def generate_text(request: GenerateRequest):
 #-----------------------------
 
 @app.post("/chat", response_model=GenerateResponse)
-def chat(request: ChatRequest):
+def chat(request: ChatRequest): 
     _ensure_loaded()
     start = time.time()
     try:
@@ -269,8 +265,8 @@ def query(request: QueryRequest):
         )
         return QueryResponse(
             question=result["question"],
-            answer=result["answer"],
-            sources=result["sources"],
+            answer=result["answer"],  
+            sources=result["sources"], 
             summary=result["summary"],
             history=result["history"],
             elapsed_seconds=round(time.time() - start, 3),
@@ -312,6 +308,5 @@ if __name__ == "__main__":
 
 #pip install fastapi "uvicorn[standard]" pydantic
 #cd D:\LLMOps\pyfiles
-#python modelapi_app.py
+#python modelapi_app.py    
 #uvicorn modelapi_app:app --host 0.0.0.0 --port 8000  
-

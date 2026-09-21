@@ -1,11 +1,11 @@
 import sys 
 sys.path.append(r'D:\LLMOps\pyfiles') 
 from logger import logger 
-from config_loader import load_config
+from config_loader import load_config 
+from query_variationar import attach_embedding_manager, query_variations
 
-config = load_config()
-
-#----------Connect the VectorDB---------- 
+config = load_config() 
+#----------Connect the VectorDB--------- 
 import lancedb
 db = lancedb.connect(config["vectordb"]["path"])
 transformers_table = db.open_table(config["vectordb"]["table"])
@@ -15,23 +15,14 @@ transformers_table = db.open_table(config["vectordb"]["table"])
 from EmbedModelLoader import EmbeddingManager
 embed_model_name = config["embedding model"]["local_path"]
 embedding_manager = EmbeddingManager(embed_model_name)
+attach_embedding_manager(embedding_manager)
 #logger.info(f"Embedding model loaded: {config['embedding model']['embedmodel_name']} ({embed_model_name})")
-
-#-----------Load the model--------------- 
-#from ModelLoader import load_model, generate 
-#model_path = r"D:\Gemma4 2B 4B\gemma-4-E2B-it" 
-
-#try:
-#    processor, tokenizer, model = load_model(model_path)
-#except ModelLoaderException as e:
-#    logger.error(f"Model loading failed: {e}")
-#    raise 
 
 #----------Retrieval systme--------------
 from RetrievalSystem import RAGRetriever 
 rag_retrieve = RAGRetriever(transformers_table, embedding_manager)
 
-#----------Main systme-------------------
+#----------Main systme------------------------------ 
 import time
 import torch
 from threading import Thread
@@ -40,7 +31,7 @@ from transformers import TextIteratorStreamer
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class AdvancedRAGPipeline:
-    def __init__(self, retriever, model, processor, use_history: bool = True, history_window: int = 1):
+    def __init__(self, retriever, model, processor, use_history: bool = True, history_window: int = 3):
         """
         use_history: system-level setting — if False, conversation history is never
                      tracked or included in prompts, regardless of what happens during queries.
@@ -58,7 +49,7 @@ class AdvancedRAGPipeline:
         self.default_max_new_tokens = config["llm"].get("max_new_tokens", 1024)
         self.default_temperature = config["llm"].get("temperature", 0.4)
         self.default_do_sample = config["llm"].get("do_sample", True)
-        self.default_stream = pipeline_cfg.get("stream", False)
+        self.default_stream = pipeline_cfg.get("stream", True)
         self.default_summarize = pipeline_cfg.get("summarize", False)
 
     def _build_inputs(self, prompt_text):
@@ -76,7 +67,7 @@ class AdvancedRAGPipeline:
         ).to(self.model.device)
         return inputs
    
-#--------------------------------------------------  
+#----------------------------------------------------------  
     def generate(self, prompt_text, max_new_tokens=None, temperature=None, do_sample=None):
         """Generates a response all at once (no streaming) — used for summaries etc."""
         if max_new_tokens is None:
@@ -95,8 +86,10 @@ class AdvancedRAGPipeline:
         )
         new_tokens = outputs[0][inputs["input_ids"].shape[-1]:]
         return self.processor.tokenizer.decode(new_tokens, skip_special_tokens=True)
-#--------------------------------------------------  
-    def generate_streaming(self, prompt_text, max_new_tokens=None, temperature=None, do_sample=True, echo: bool = False):
+        
+#-------------------------------------------------- 
+
+    def generate_streaming(self, prompt_text, max_new_tokens=None, temperature=None, do_sample=None, echo: bool = False):
         """Generates a response token-by-token. Yields text chunks for the API."""
         if max_new_tokens is None:
             max_new_tokens = self.default_max_new_tokens
@@ -126,66 +119,69 @@ class AdvancedRAGPipeline:
 
         thread.join()
         if echo:
-            print()
-#--------------------------------------------------      
+            print() 
+#--------------------------------------------------   
+   
 #--------------------------------------------------  
+    def _collect_hits(self, search_queries, top_k):
+        results = []
+        seen_ids = set()
+        for q in search_queries:
+            hits = self.retriever.retrieve(q, top_k=top_k)
+            for doc in hits:
+                if doc["id"] in seen_ids:
+                    continue
+                seen_ids.add(doc["id"])
+                results.append(doc)
+        return results
+
     def query(self, question: str, top_k: int = None, min_score: float = None, stream: bool = None, summarize: bool = None) -> dict:
         if top_k is None:
             top_k = self.default_top_k
-        if min_score is None:
-            min_score = self.default_min_score
         if stream is None:
             stream = self.default_stream
         if summarize is None:
             summarize = self.default_summarize
 
-        results = self.retriever.retrieve(question, top_k=top_k, score_threshold=min_score)
+        variations = query_variations(question)
+        search_queries = [question] + [v for v in (variations or []) if v != question]
+        results = self._collect_hits(search_queries, top_k)
 
         if not results:
             answer = "No relevant context found"
             sources = []
-            context = ''
-
+            context = ""
         else:
-            context = '\n\n'.join([doc['content'] for doc in results])
-
+            context = "\n\n".join([doc["content"] for doc in results])
             sources = [{
-                'source': doc['source_file'],
-                'similarity_score': doc['similarity_score'],
-                'distances': doc['distance'],
-                'chunk_index': doc['chunk_index'],
-                'doc_id': doc['id'],
-                'preview': doc['content'][:120] + '...'
+                "source": doc["source_file"],
+                "rank": doc.get("rank"),
+                "distances": doc.get("distance"),
+                "chunk_index": doc["chunk_index"],
+                "doc_id": doc["id"],
+                "preview": doc["content"][:120] + "...",
             } for doc in results]
 
-        # ----------------- build history + prompt -----------------
+        history_text = ""
         if self.use_history:
-            history_text = ""
             for turn in self.history[-self.history_window:]:
                 history_text += f"Previous Question: {turn['question']}\nPrevious Answer: {turn['answer']}\n\n"
 
-            prompt = f""" System_role: {'You are a enterprise ai assistant to a company, you reffer the user as Sir.'}
+        variation_text = "; ".join(variations) if variations else "none"
+        prompt = f""" System_role: You are a enterprise ai assistant to a company, you reffer the user as Sir.
 
-        Use the following context and conversation history to answer the question concisely.
-
+        Use the following context and conversation history and variations of the original query, which are semantically similar in meaning,
+        to answer the question concisely.
+        Variations of the original query: {variation_text}
         Conversation history: {history_text}
         Context: {context}
         Question: {question}
         """
 
-        else:
-            prompt = f""" System_role: {'You are a enterprise ai assistant to a company, you reffer the user as Sir.'}
-        Use the following context to answer the question concisely.
-         
-        Context: {context}
-        Question: {question}
-        """
-        # ------------------------------------------------------------
-
         if not results:
             answer = "No relevant context found"
         elif stream:
-            print('Streaming answer:')
+            print("Streaming answer:")
             answer = "".join(self.generate_streaming(prompt, echo=True))
         else:
             answer = self.generate(prompt)
@@ -213,7 +209,6 @@ class AdvancedRAGPipeline:
             'summary': summary,
             'history': self.history if self.use_history else None
         }
-
        #-------------------------------------------------- 
             
 #if __name__ == "__main__":
