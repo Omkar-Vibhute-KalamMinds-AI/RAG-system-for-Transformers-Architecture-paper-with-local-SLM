@@ -1,7 +1,7 @@
 from transformers import AutoProcessor, AutoModelForImageTextToText
 import sys
 
-import _bootstrap  # noqa: F401
+import pyfiles_path  # noqa: F401
 from exception import ModelLoaderException
 import torch 
 from logger import logger 

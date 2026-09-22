@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 
-import _bootstrap  # noqa: F401
+import pyfiles_path  # noqa: F401
 from langchain_core.documents import Document
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_core.retrievers import BaseRetriever

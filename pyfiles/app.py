@@ -1,4 +1,4 @@
-import _bootstrap  # noqa: F401
+import pyfiles_path  # noqa: F401
 from logger import logger 
 from config_loader import load_config 
 from query_variationar import attach_embedding_manager, query_variations

@@ -1,6 +1,6 @@
 import sys
 
-import _bootstrap  # noqa: F401
+import pyfiles_path  # noqa: F401
 from typing import List, Dict, Any 
 import lancedb
 from EmbedModelLoader import EmbeddingManager 

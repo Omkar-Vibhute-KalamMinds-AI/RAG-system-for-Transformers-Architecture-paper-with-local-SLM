@@ -1,6 +1,6 @@
 import ast
 import re
-import _bootstrap  # noqa: F401
+import pyfiles_path  # noqa: F401
 from config_loader import load_config
 from EmbedModelLoader import EmbeddingManager
 from ModelLoader import load_model

@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import *
 from pathlib import Path  
 
-import _bootstrap  # noqa: F401
+import pyfiles_path  # noqa: F401
 from logger import logger
 from ModelLoader import load_model
 from app import AdvancedRAGPipeline, rag_retrieve

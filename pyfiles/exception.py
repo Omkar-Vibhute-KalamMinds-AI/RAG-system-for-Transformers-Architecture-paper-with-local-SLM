@@ -1,7 +1,7 @@
 import logging
 import sys
 
-import _bootstrap  # noqa: F401
+import pyfiles_path  # noqa: F401
 import logger
 
 

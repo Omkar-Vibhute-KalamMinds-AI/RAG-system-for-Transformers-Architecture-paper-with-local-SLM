@@ -1,4 +1,4 @@
-import _bootstrap  # noqa: F401
+import pyfiles_path  # noqa: F401
 from sentence_transformers import SentenceTransformer 
 from exception import EmbedModelLoaderException
 from logger import logger 
