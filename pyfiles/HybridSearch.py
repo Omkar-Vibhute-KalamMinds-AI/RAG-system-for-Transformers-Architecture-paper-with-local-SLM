@@ -11,6 +11,35 @@ from pydantic import Field
 from bm25_retriever import LocalBM25Retriever
 
 
+def _vector_search_dataframe(table, query_embedding: np.ndarray, top_k: int):
+    """LanceDB vector search with pandas cosine fallback for tiny/unindexed tables (CI)."""
+    import pandas as pd
+
+    try:
+        return (
+            table.search(query_embedding, vector_column_name="vector")
+            .limit(top_k)
+            .to_pandas()
+        )
+    except (ValueError, TypeError, RuntimeError):
+        rows = table.to_pandas()
+        if rows.empty:
+            return rows
+
+        q = np.asarray(query_embedding, dtype=np.float32).reshape(-1)
+        q_norm = float(np.linalg.norm(q)) or 1.0
+        scored: list[tuple[float, int]] = []
+        for idx, row in rows.iterrows():
+            vec = np.asarray(row["vector"], dtype=np.float32).reshape(-1)
+            v_norm = float(np.linalg.norm(vec)) or 1.0
+            sim = float(np.dot(q, vec) / (q_norm * v_norm))
+            scored.append((sim, idx))
+
+        scored.sort(key=lambda item: item[0], reverse=True)
+        top_indices = [idx for _, idx in scored[:top_k]]
+        return pd.DataFrame(rows.loc[top_indices]).reset_index(drop=True)
+
+
 class LanceDBDirectRetriever(BaseRetriever):
     table: object = Field(...)
     embedding_manager: object = Field(...)
@@ -21,12 +50,7 @@ class LanceDBDirectRetriever(BaseRetriever):
             self.embedding_manager.generate_embeddings([query])[0],
             dtype=np.float32,
         )
-        # Small integration/CI tables are unindexed; nprobes() requires an IVF index.
-        results = (
-            self.table.search(query_embedding, vector_column_name="vector")
-            .limit(self.top_k)
-            .to_pandas()
-        )
+        results = _vector_search_dataframe(self.table, query_embedding, self.top_k)
 
         docs = []
         for _, row in results.iterrows():
