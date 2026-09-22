@@ -1,0 +1,18 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.3, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\HP\AppData\Local\Programs\Python\Python313\python.exe
+cachedir: .pytest_cache
+rootdir: D:\LLMOps
+configfile: pyproject.toml
+plugins: anyio-4.9.0, Faker-40.38.0, langsmith-0.10.18, typeguard-4.4.4
+collecting ... collected 8 items
+
+tests/test_integration.py::TestRetrievalIntegration::test_hybrid_search_returns_attention_chunk_for_ml_query PASSED [ 12%]
+tests/test_integration.py::TestRetrievalIntegration::test_retrieval_prefers_on_topic_over_off_topic PASSED [ 25%]
+tests/test_integration.py::TestPipelineIntegration::test_query_variations_merged_into_retrieval PASSED [ 37%]
+tests/test_integration.py::TestPipelineIntegration::test_full_query_returns_citations_from_real_retriever PASSED [ 50%]
+tests/test_integration.py::TestApiIntegration::test_query_http_roundtrip_with_loaded_pipeline PASSED [ 62%]
+tests/test_integration.py::TestApiIntegration::test_generate_stream_http_when_pipeline_loaded PASSED [ 75%]
+tests/test_integration.py::TestApiIntegration::test_health_reports_ready_when_pipeline_injected PASSED [ 87%]
+tests/test_integration.py::TestConfigRetrievalIntegration::test_config_paths_match_retriever_expectations PASSED [100%]
+
+============================== 8 passed in 2.73s ==============================
