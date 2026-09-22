@@ -10,8 +10,16 @@ Why this file exists:
 from __future__ import annotations
 
 import sys
+import warnings
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+# Starlette's TestClient imports the deprecated anyio.abc.BlockingPortal alias.
+warnings.filterwarnings(
+    "ignore",
+    message="The anyio.abc.BlockingPortal alias is deprecated",
+    category=DeprecationWarning,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PYFILES_DIR = PROJECT_ROOT / "pyfiles"

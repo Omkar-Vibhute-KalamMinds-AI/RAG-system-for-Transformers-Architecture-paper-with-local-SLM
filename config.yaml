@@ -22,6 +22,6 @@ AdvancedRAGPipeline:
   use_history: True
   history_window: 1
   stream: True
-  summarize: Fal
+  summarize: False
 
 

@@ -134,23 +134,16 @@ class AdvancedRAGPipeline:
                 results.append(doc)
         return results
 
-    def query(self, question: str, top_k: int = None, min_score: float = None, stream: bool = None, summarize: bool = None) -> dict:
+    def _prepare_query(self, question: str, top_k: int = None) -> dict:
+        """Retrieve context and build the RAG prompt (shared by JSON and streaming)."""
         if top_k is None:
             top_k = self.default_top_k
-        if stream is None:
-            stream = self.default_stream
-        if summarize is None:
-            summarize = self.default_summarize
-
         variations = query_variations(question)
         search_queries = [question] + [v for v in (variations or []) if v != question]
         results = self._collect_hits(search_queries, top_k)
-
-        if not results:
-            answer = "No relevant context found"
-            sources = []
-            context = ""
-        else:
+        sources = []
+        context = ""
+        if results:
             context = "\n\n".join([doc["content"] for doc in results])
             sources = [{
                 "source": doc["source_file"],
@@ -176,37 +169,90 @@ class AdvancedRAGPipeline:
         Context: {context}
         Question: {question}
         """
+        return {"results": results, "sources": sources, "prompt": prompt}
+
+    @staticmethod
+    def _citations_suffix(sources) -> str:
+        if not sources:
+            return ""
+        citations = [f"[{i+1}] {src['source']}" for i, src in enumerate(sources)]
+        return "\n\nCitations:\n" + "\n".join(citations)
+
+    def _record_history(self, question, answer, sources, summary):
+        if self.use_history:
+            self.history.append({
+                "question": question,
+                "answer": answer,
+                "sources": sources,
+                "summary": summary,
+            })
+
+    def query_streaming(
+        self,
+        question: str,
+        top_k: int = None,
+        min_score: float = None,
+        summarize: bool = None,
+        max_new_tokens: int = None,
+    ):
+        """Yield RAG answer tokens as they are generated, then citations."""
+        prepared = self._prepare_query(question, top_k=top_k)
+        sources = prepared["sources"]
+        if not prepared["results"]:
+            yield "No relevant context found"
+            self._record_history(question, "No relevant context found", [], None)
+            return
+
+        answer_parts = []
+        for chunk in self.generate_streaming(prepared["prompt"], max_new_tokens=max_new_tokens):
+            answer_parts.append(chunk)
+            yield chunk
+
+        citations = self._citations_suffix(sources)
+        if citations:
+            yield citations
+
+        answer = "".join(answer_parts)
+        summary = None
+        if summarize is None:
+            summarize = self.default_summarize
+        if summarize and answer:
+            summary = self.generate(f"Summarize the following answer in 2 sentences: \n{answer}")
+        self._record_history(question, answer, sources, summary)
+
+    def query(self, question: str, top_k: int = None, min_score: float = None, stream: bool = None, summarize: bool = None) -> dict:
+        if stream is None:
+            stream = self.default_stream
+        if summarize is None:
+            summarize = self.default_summarize
+
+        prepared = self._prepare_query(question, top_k=top_k)
+        sources = prepared["sources"]
+        results = prepared["results"]
+        prompt = prepared["prompt"]
 
         if not results:
             answer = "No relevant context found"
         elif stream:
-            print("Streaming answer:")
             answer = "".join(self.generate_streaming(prompt, echo=True))
         else:
             answer = self.generate(prompt)
 
-        citations = [f"[{i+1}] {src['source']}" for i, src in enumerate(sources)]
-        answer_with_citations = answer + "\n\nCitations:\n" + "\n".join(citations) if citations else answer
+        answer_with_citations = answer + self._citations_suffix(sources)
 
         summary = None
-        if summarize and answer:
-            summary_prompt = f'Summarize the following answer in 2 sentences: \n{answer}'
+        if summarize and results and answer:
+            summary_prompt = f"Summarize the following answer in 2 sentences: \n{answer}"
             summary = self.generate(summary_prompt)
 
-        if self.use_history:
-            self.history.append({
-                'question': question,
-                'answer': answer,
-                'sources': sources,
-                'summary': summary
-            })
+        self._record_history(question, answer, sources, summary)
 
         return {
-            'question': question,
-            'answer': answer_with_citations,
-            'sources': sources,
-            'summary': summary,
-            'history': self.history if self.use_history else None
+            "question": question,
+            "answer": answer_with_citations,
+            "sources": sources,
+            "summary": summary,
+            "history": self.history if self.use_history else None,
         }
        #-------------------------------------------------- 
             

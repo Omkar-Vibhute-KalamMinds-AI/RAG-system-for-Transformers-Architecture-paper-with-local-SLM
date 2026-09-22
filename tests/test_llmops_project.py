@@ -303,6 +303,28 @@ class TestAdvancedRAGPipeline:
 
         assert "Citations:" in result["answer"]
         assert "paper.pdf" in result["answer"]
+
+    def test_query_streaming_yields_tokens_then_citations(self, pipeline):
+        """RAG console reads token chunks from /query/stream, not a single buffered blob."""
+        pipeline.retriever.retrieve.return_value = [
+            {
+                "id": "x",
+                "chunk_index": 0,
+                "content": "Context paragraph",
+                "source_file": "paper.pdf",
+                "rank": 1,
+            }
+        ]
+        pipeline.generate_streaming = MagicMock(return_value=iter(["Hel", "lo"]))
+
+        with patch("app.query_variations", return_value=[]):
+            chunks = list(pipeline.query_streaming("question?", summarize=False))
+
+        joined = "".join(chunks)
+        assert chunks[0] == "Hel"
+        assert "Hello" in joined
+        assert "Citations:" in joined
+        assert "paper.pdf" in joined
 # ---------------------------------------------------------------------------
 # modelapi_app — FastAPI contract (health, config, validation, 503 when unloaded)
 # ---------------------------------------------------------------------------

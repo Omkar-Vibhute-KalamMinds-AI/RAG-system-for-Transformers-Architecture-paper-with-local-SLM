@@ -549,22 +549,36 @@ async function loadDefaults() {
   }
 }
 
-async function runQuery(question) {
-  const payload = {
-    question,
-    top_k: Number(els.topK.value),
-    min_score: Number(els.minScore.value),
-    summarize: els.summarize.checked,
-    use_history: els.useHistory.checked,
-    max_new_tokens: Number(els.maxTokens.value),
-  };
-  const res = await fetch("/query", {
+async function readPlainStream(res, bodyEl) {
+  if (!res.ok) throw new Error(await res.text());
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let full = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    full += decoder.decode(value, { stream: true });
+    if (bodyEl) bodyEl.textContent = full;
+    els.thread.scrollTop = els.thread.scrollHeight;
+  }
+  return full;
+}
+
+async function runQueryStream(question, bodyEl) {
+  const res = await fetch("/query/stream", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      question,
+      top_k: Number(els.topK.value),
+      min_score: Number(els.minScore.value),
+      summarize: els.summarize.checked,
+      use_history: els.useHistory.checked,
+      max_new_tokens: Number(els.maxTokens.value),
+      stream: true,
+    }),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return readPlainStream(res, bodyEl);
 }
 
 async function runGenerateStream(prompt, bodyEl) {
@@ -578,29 +592,18 @@ async function runGenerateStream(prompt, bodyEl) {
       do_sample: els.doSample.checked,
     }),
   });
-  if (!res.ok) throw new Error(await res.text());
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let full = "";
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    full += decoder.decode(value, { stream: true });
-    bodyEl.textContent = full;
-    els.thread.scrollTop = els.thread.scrollHeight;
-  }
-  return full;
+  return readPlainStream(res, bodyEl);
 }
 
 async function runAssistant(prompt) {
   const chat = ensureChat();
   busy = true;
   els.send.disabled = true;
-  els.runMeta.textContent = mode === "rag" ? "Retrieving + generating…" : "Streaming tokens…";
+  els.runMeta.textContent = mode === "rag" ? "Retrieving + streaming…" : "Streaming tokens…";
   const assistant = {
     id: uid(),
     role: "assistant",
-    text: mode === "rag" ? "Working…" : "",
+    text: "",
     sources: [],
     extra: "live",
   };
@@ -610,10 +613,8 @@ async function runAssistant(prompt) {
   const body = els.thread.querySelector(`.msg[data-id="${assistant.id}"] .body`);
   try {
     if (mode === "rag") {
-      const data = await runQuery(prompt);
-      assistant.text = data.answer || "";
-      assistant.sources = data.sources || [];
-      assistant.extra = `${data.elapsed_seconds}s`;
+      assistant.text = await runQueryStream(prompt, body);
+      assistant.extra = "complete";
     } else {
       assistant.text = await runGenerateStream(prompt, body);
       assistant.extra = "complete";

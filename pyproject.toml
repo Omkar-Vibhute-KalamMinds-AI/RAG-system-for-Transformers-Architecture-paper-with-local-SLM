@@ -48,3 +48,7 @@ markers = [
     "slow: on-machine smoke tests against config.yaml paths (GPU/RAM heavy)",
 ]
 testpaths = ["tests"]
+filterwarnings = [
+    # Starlette TestClient still references anyio.abc.BlockingPortal (deprecated).
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]

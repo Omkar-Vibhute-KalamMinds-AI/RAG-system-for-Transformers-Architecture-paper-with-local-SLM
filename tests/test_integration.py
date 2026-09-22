@@ -255,6 +255,8 @@ class TestApiIntegration:
 
         assert resp.status_code == 200
         assert "text/plain" in resp.headers.get("content-type", "")
+        assert "streamed" in resp.text
+        assert "Citations:" in resp.text
 
     def test_health_reports_ready_when_pipeline_injected(self, integration_pipeline):
         """Health should flip to ready once lifespan (or tests) attach a pipeline."""

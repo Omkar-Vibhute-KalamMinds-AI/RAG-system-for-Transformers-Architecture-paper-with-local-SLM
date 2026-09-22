@@ -283,14 +283,14 @@ def query_stream(request: QueryRequest):
 
     def event_stream():
         try:
-            result = pipeline.query(
+            for chunk in pipeline.query_streaming(
                 request.question,
                 top_k=request.top_k,
                 min_score=request.min_score,
-                stream=True,
                 summarize=request.summarize,
-            )
-            yield result["answer"]
+                max_new_tokens=request.max_new_tokens,
+            ):
+                yield chunk
         except Exception as e:
             logger.error(f"/query/stream failed: {e}", exc_info=True)
             yield f"\n[error] {e}"
@@ -308,4 +308,6 @@ if __name__ == "__main__":
 #pip install fastapi "uvicorn[standard]" pydantic
 #cd D:\LLMOps\pyfiles
 #python modelapi_app.py    
-#uvicorn modelapi_app:app --host 0.0.0.0 --port 8000
+#uvicorn modelapi_app:app --host 0.0.0.0 --port 8000 
+
+# python -m pytest tests/test_llmops_project.py tests/test_integration.py -v --tb=short 
