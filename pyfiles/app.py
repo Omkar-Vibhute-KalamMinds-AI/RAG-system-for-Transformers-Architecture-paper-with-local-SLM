@@ -1,25 +1,35 @@
 import pyfiles_path  # noqa: F401
-from logger import logger 
-from config_loader import load_config 
+from logger import logger
+from config_loader import load_config
 from query_variationar import attach_embedding_manager, query_variations
 
-config = load_config() 
-#----------Connect the VectorDB--------- 
-import lancedb
-db = lancedb.connect(config["vectordb"]["path"])
-transformers_table = db.open_table(config["vectordb"]["table"])
-#logger.info(f"Connected to LanceDB table '{config['vectordb']['table']}' — {transformers_table.count_rows()} rows")
+config = load_config()
 
-#----------Load the EmbedModel-----------
-from EmbedModelLoader import EmbeddingManager
-embed_model_name = config["embedding model"]["local_path"]
-embedding_manager = EmbeddingManager(embed_model_name)
-attach_embedding_manager(embedding_manager)
-#logger.info(f"Embedding model loaded: {config['embedding model']['embedmodel_name']} ({embed_model_name})")
+# Production LanceDB / embedder are created on first use so tests can import
+# AdvancedRAGPipeline without a local transformer_table.
+db = None
+transformers_table = None
+embedding_manager = None
+rag_retrieve = None
 
-#----------Retrieval systme--------------
-from RetrievalSystem import RAGRetriever 
-rag_retrieve = RAGRetriever(transformers_table, embedding_manager)
+
+def init_retriever():
+    """Connect LanceDB and load the embedder (no-op if already initialized)."""
+    global db, transformers_table, embedding_manager, rag_retrieve
+    if rag_retrieve is not None:
+        return rag_retrieve
+
+    import lancedb
+    from EmbedModelLoader import EmbeddingManager
+    from RetrievalSystem import RAGRetriever
+
+    db = lancedb.connect(config["vectordb"]["path"])
+    transformers_table = db.open_table(config["vectordb"]["table"])
+    embed_model_name = config["embedding model"]["local_path"]
+    embedding_manager = EmbeddingManager(embed_model_name)
+    attach_embedding_manager(embedding_manager)
+    rag_retrieve = RAGRetriever(transformers_table, embedding_manager)
+    return rag_retrieve
 
 #----------Main systme------------------------------ 
 import time

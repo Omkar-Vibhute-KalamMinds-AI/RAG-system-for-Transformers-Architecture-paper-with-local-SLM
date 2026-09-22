@@ -16,7 +16,7 @@ from pathlib import Path
 import pyfiles_path  # noqa: F401
 from logger import logger
 from ModelLoader import load_model
-from app import AdvancedRAGPipeline, rag_retrieve
+from app import AdvancedRAGPipeline, init_retriever
 from config_loader import load_config
 #-----------------------------
 
@@ -92,7 +92,7 @@ async def lifespan(app: FastAPI):
     from query_variationar import attach_llm
     attach_llm(processor, tokenizer, model)
     pipeline = AdvancedRAGPipeline(
-        rag_retrieve,
+        init_retriever(),
         model,
         processor,
         use_history=PIPELINE_USE_HISTORY,
