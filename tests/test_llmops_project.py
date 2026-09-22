@@ -117,7 +117,6 @@ class TestQueryVariations:
         with patch.object(qv, "query_veriation_generator", side_effect=RuntimeError("llm down")):
             assert qv.query_variations("hello") == []
 
-
 # ---------------------------------------------------------------------------
 # HybridSearch — vector retriever maps LanceDB rows → LangChain Documents
 # ---------------------------------------------------------------------------

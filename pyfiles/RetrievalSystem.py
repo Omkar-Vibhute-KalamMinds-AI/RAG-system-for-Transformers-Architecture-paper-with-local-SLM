@@ -1,3 +1,5 @@
+import sys
+
 import _bootstrap  # noqa: F401
 from typing import List, Dict, Any 
 import lancedb
@@ -56,4 +58,7 @@ class RAGRetriever:
 
         except Exception as e:
             logger.error(f"Retrieval failed for query '{query} of length {len(query)}': {e}", exc_info=True)
-            raise RetrievialSystemException(f"Retrieval failed for query '{query}': {e}") from e
+            raise RetrievialSystemException(
+                f"Retrieval failed for query '{query}': {e}",
+                sys,
+            ) from e
