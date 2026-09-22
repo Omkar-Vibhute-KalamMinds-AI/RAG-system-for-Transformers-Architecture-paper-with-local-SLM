@@ -138,7 +138,10 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 @app.get("/", include_in_schema=False)
 def index():
-    return FileResponse(STATIC_DIR / "index.html")
+    return FileResponse(
+        STATIC_DIR / "index.html",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.get("/docs", include_in_schema=False)
@@ -234,6 +237,7 @@ def generate_stream(request: GenerateRequest):
 
     def event_stream():
         try:
+            yield "Working..."
             for chunk in pipeline.generate_streaming(
                 request.prompt,
                 max_new_tokens=request.max_new_tokens,
@@ -283,6 +287,8 @@ def query_stream(request: QueryRequest):
 
     def event_stream():
         try:
+            # Flush immediately so the UI can show Working... during retrieval.
+            yield "Working..."
             for chunk in pipeline.query_streaming(
                 request.question,
                 top_k=request.top_k,
@@ -295,7 +301,11 @@ def query_stream(request: QueryRequest):
             logger.error(f"/query/stream failed: {e}", exc_info=True)
             yield f"\n[error] {e}"
 
-    return StreamingResponse(event_stream(), media_type="text/plain")
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/plain",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 

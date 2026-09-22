@@ -390,7 +390,13 @@ function renderThread() {
     }
     const body = document.createElement("div");
     body.className = "body";
-    body.textContent = displayedUserText(msg);
+    const raw = displayedUserText(msg);
+    const isPending =
+      msg.role === "assistant" &&
+      (msg.pending || msg.extra === "live") &&
+      (!raw || raw === "Working...");
+    body.textContent = isPending ? "Working..." : raw;
+    if (isPending) body.classList.add("pending");
     wrap.append(meta, body);
     if (msg.role === "assistant" && msg.sources && msg.sources.length) {
       const box = document.createElement("div");
@@ -549,6 +555,8 @@ async function loadDefaults() {
   }
 }
 
+const WORKING_STATUS = "Working...";
+
 async function readPlainStream(res, bodyEl) {
   if (!res.ok) throw new Error(await res.text());
   const reader = res.body.getReader();
@@ -558,10 +566,22 @@ async function readPlainStream(res, bodyEl) {
     const { value, done } = await reader.read();
     if (done) break;
     full += decoder.decode(value, { stream: true });
-    if (bodyEl && full) bodyEl.textContent = full;
+    const visible = visibleStreamText(full);
+    if (bodyEl && visible && visible !== WORKING_STATUS) {
+      bodyEl.classList.remove("pending");
+      bodyEl.textContent = visible;
+    } else if (bodyEl) {
+      bodyEl.classList.add("pending");
+      bodyEl.textContent = WORKING_STATUS;
+    }
     els.thread.scrollTop = els.thread.scrollHeight;
   }
-  return full;
+  return visibleStreamText(full);
+}
+
+function visibleStreamText(full) {
+  if (!full || !full.trim() || full.trim() === WORKING_STATUS) return WORKING_STATUS;
+  return full.replace(/^Working\.\.\.\s*/, "");
 }
 
 async function runQueryStream(question, bodyEl) {
@@ -599,11 +619,12 @@ async function runAssistant(prompt) {
   const chat = ensureChat();
   busy = true;
   els.send.disabled = true;
-  els.runMeta.textContent = "Working…";
+  els.runMeta.textContent = WORKING_STATUS;
   const assistant = {
     id: uid(),
     role: "assistant",
-    text: "Working…",
+    text: WORKING_STATUS,
+    pending: true,
     sources: [],
     extra: "live",
   };
@@ -611,6 +632,10 @@ async function runAssistant(prompt) {
   persist();
   renderThread();
   const body = els.thread.querySelector(`.msg[data-id="${assistant.id}"] .body`);
+  if (body) {
+    body.classList.add("pending");
+    body.textContent = WORKING_STATUS;
+  }
   try {
     if (mode === "rag") {
       assistant.text = await runQueryStream(prompt, body);
@@ -619,6 +644,7 @@ async function runAssistant(prompt) {
       assistant.text = await runGenerateStream(prompt, body);
       assistant.extra = "complete";
     }
+    assistant.pending = false;
     chat.updatedAt = Date.now();
     persist();
     renderThread();
