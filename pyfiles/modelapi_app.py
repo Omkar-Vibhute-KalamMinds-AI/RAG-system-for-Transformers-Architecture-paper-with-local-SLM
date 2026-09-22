@@ -18,7 +18,6 @@ from logger import logger
 from ModelLoader import load_model
 from app import AdvancedRAGPipeline, rag_retrieve
 from config_loader import load_config
-from transformers.models.gemma4.processing_gemma4 import Gemma4Processor
 #-----------------------------
 
 config = load_config()
