@@ -558,7 +558,7 @@ async function readPlainStream(res, bodyEl) {
     const { value, done } = await reader.read();
     if (done) break;
     full += decoder.decode(value, { stream: true });
-    if (bodyEl) bodyEl.textContent = full;
+    if (bodyEl && full) bodyEl.textContent = full;
     els.thread.scrollTop = els.thread.scrollHeight;
   }
   return full;
@@ -599,11 +599,11 @@ async function runAssistant(prompt) {
   const chat = ensureChat();
   busy = true;
   els.send.disabled = true;
-  els.runMeta.textContent = mode === "rag" ? "Retrieving + streaming…" : "Streaming tokens…";
+  els.runMeta.textContent = "Working…";
   const assistant = {
     id: uid(),
     role: "assistant",
-    text: "",
+    text: "Working…",
     sources: [],
     extra: "live",
   };
