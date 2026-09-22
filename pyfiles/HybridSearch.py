@@ -1,5 +1,8 @@
 from typing import List
+
 import numpy as np
+import pandas as pd
+
 import pyfiles_path  # noqa: F401
 from langchain_core.documents import Document
 from langchain_classic.retrievers import EnsembleRetriever
@@ -7,11 +10,37 @@ from langchain_core.retrievers import BaseRetriever
 from pydantic import Field
 from bm25_retriever import LocalBM25Retriever
 
+_SMALL_TABLE_ROWS = 64
+
+
+def _cosine_search_pandas(table, query_embedding: np.ndarray, top_k: int):
+    rows = table.to_pandas()
+    if rows.empty:
+        return rows
+
+    q = np.asarray(query_embedding, dtype=np.float32).reshape(-1)
+    q_norm = float(np.linalg.norm(q)) or 1.0
+    scored: list[tuple[float, object]] = []
+    for idx, row in rows.iterrows():
+        vec = np.asarray(row["vector"], dtype=np.float32).reshape(-1)
+        v_norm = float(np.linalg.norm(vec)) or 1.0
+        sim = float(np.dot(q, vec) / (q_norm * v_norm))
+        scored.append((sim, idx))
+
+    scored.sort(key=lambda item: item[0], reverse=True)
+    top_indices = [idx for _, idx in scored[:top_k]]
+    return pd.DataFrame(rows.loc[top_indices]).reset_index(drop=True)
 
 
 def _vector_search_dataframe(table, query_embedding: np.ndarray, top_k: int):
-    """LanceDB vector search with pandas cosine fallback for tiny/unindexed tables (CI)."""
-    import pandas as pd
+    """Native Lance search, with cosine fallback for tiny/unindexed tables (Linux CI)."""
+    try:
+        n_rows = table.count_rows()
+    except Exception:
+        n_rows = None
+
+    if isinstance(n_rows, int) and n_rows <= _SMALL_TABLE_ROWS:
+        return _cosine_search_pandas(table, query_embedding, top_k)
 
     try:
         return (
@@ -19,23 +48,8 @@ def _vector_search_dataframe(table, query_embedding: np.ndarray, top_k: int):
             .limit(top_k)
             .to_pandas()
         )
-    except (ValueError, TypeError, RuntimeError):
-        rows = table.to_pandas()
-        if rows.empty:
-            return rows
-
-        q = np.asarray(query_embedding, dtype=np.float32).reshape(-1)
-        q_norm = float(np.linalg.norm(q)) or 1.0
-        scored: list[tuple[float, int]] = []
-        for idx, row in rows.iterrows():
-            vec = np.asarray(row["vector"], dtype=np.float32).reshape(-1)
-            v_norm = float(np.linalg.norm(vec)) or 1.0
-            sim = float(np.dot(q, vec) / (q_norm * v_norm))
-            scored.append((sim, idx))
-
-        scored.sort(key=lambda item: item[0], reverse=True)
-        top_indices = [idx for _, idx in scored[:top_k]]
-        return pd.DataFrame(rows.loc[top_indices]).reset_index(drop=True)
+    except Exception:
+        return _cosine_search_pandas(table, query_embedding, top_k)
 
 
 
