@@ -1,8 +1,6 @@
 import ast
 import re
-import sys
-
-sys.path.append(r"D:\LLMOps\pyfiles")
+import _bootstrap  # noqa: F401
 from config_loader import load_config
 from EmbedModelLoader import EmbeddingManager
 from ModelLoader import load_model

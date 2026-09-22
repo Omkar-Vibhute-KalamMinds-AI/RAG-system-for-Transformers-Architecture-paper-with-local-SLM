@@ -1,7 +1,6 @@
-import sys
 from typing import List
 
-sys.path.append(r"D:\LLMOps\pyfiles")
+import _bootstrap  # noqa: F401
 from langchain_core.documents import Document
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_core.retrievers import BaseRetriever
@@ -17,9 +16,11 @@ class LanceDBDirectRetriever(BaseRetriever):
 
     def _get_relevant_documents(self, query: str) -> List[Document]:
         query_embedding = self.embedding_manager.generate_embeddings([query])[0]
+        if hasattr(query_embedding, "tolist"):
+            query_embedding = query_embedding.tolist()
+        # Small integration/CI tables are unindexed; nprobes() requires an IVF index.
         results = (
             self.table.search(query_embedding, vector_column_name="vector")
-            .nprobes(2)
             .limit(self.top_k)
             .to_pandas()
         )

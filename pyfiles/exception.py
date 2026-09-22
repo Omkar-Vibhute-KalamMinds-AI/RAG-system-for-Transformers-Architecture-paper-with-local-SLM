@@ -1,9 +1,8 @@
-import sys
 import logging
-from click import File
-import sys 
-sys.path.append(r'D:\LLMOps\pyfiles')
-import logger 
+import sys
+
+import _bootstrap  # noqa: F401
+import logger
 
 
 def error_message_detail(error, error_detail: sys) -> str:

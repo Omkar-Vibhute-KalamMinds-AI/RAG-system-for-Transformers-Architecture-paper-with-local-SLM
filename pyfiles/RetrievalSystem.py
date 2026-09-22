@@ -1,5 +1,4 @@
-import sys
-sys.path.append(r'D:\LLMOps\pyfiles')
+import _bootstrap  # noqa: F401
 from typing import List, Dict, Any 
 import lancedb
 from EmbedModelLoader import EmbeddingManager 

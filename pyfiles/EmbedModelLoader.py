@@ -1,5 +1,4 @@
-import sys
-sys.path.append(r'D:\LLMOps\pyfiles')
+import _bootstrap  # noqa: F401
 from sentence_transformers import SentenceTransformer 
 from exception import EmbedModelLoaderException
 from logger import logger 

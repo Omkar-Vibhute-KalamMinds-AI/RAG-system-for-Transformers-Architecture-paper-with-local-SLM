@@ -1,6 +1,7 @@
 from transformers import AutoProcessor, AutoModelForImageTextToText
 import sys
-sys.path.append(r'D:\LLMOps\pyfiles')
+
+import _bootstrap  # noqa: F401
 from exception import ModelLoaderException
 import torch 
 from logger import logger 

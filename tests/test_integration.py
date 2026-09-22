@@ -286,4 +286,5 @@ class TestConfigRetrievalIntegration:
         assert isinstance(cfg["vectordb"]["path"], str) and cfg["vectordb"]["path"].strip()
         assert cfg["vectordb"]["table"]
         assert cfg["retriever"]["top_k"] >= 1
-        assert 0.0 <= cfg["retriever"]["min_score"] <= 1.0
+        min_score = float(cfg["retriever"]["min_score"])
+        assert 0.0 <= min_score <= 1.0

@@ -42,9 +42,6 @@ class TestConfigLoader:
 # ---------------------------------------------------------------------------
 # exception — operational errors must carry file/line for log triage
 # ---------------------------------------------------------------------------
-import sys 
-sys.path.append(r'D:\LLMOps\pyfiles')
-
 class TestExceptions:
     def test_custom_exception_includes_location(self):
         """Ops team relies on CustomException formatting in logs (see exception.py)."""
@@ -131,7 +128,7 @@ class TestHybridSearch:
 
         row_df = pd.DataFrame([sample_chunk_record])
         mock_table = MagicMock()
-        chain = mock_table.search.return_value.nprobes.return_value.limit.return_value
+        chain = mock_table.search.return_value.limit.return_value
         chain.to_pandas.return_value = row_df
 
         mock_emb = MagicMock()
