@@ -58,3 +58,5 @@ jobs:
 
       - name: Full suite summary
         run: python -m pytest tests/ -q --tb=line
+
+        
