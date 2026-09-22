@@ -1,14 +1,12 @@
 from typing import List
-
 import numpy as np
-
 import pyfiles_path  # noqa: F401
 from langchain_core.documents import Document
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_core.retrievers import BaseRetriever
 from pydantic import Field
-
 from bm25_retriever import LocalBM25Retriever
+
 
 
 def _vector_search_dataframe(table, query_embedding: np.ndarray, top_k: int):
@@ -38,6 +36,8 @@ def _vector_search_dataframe(table, query_embedding: np.ndarray, top_k: int):
         scored.sort(key=lambda item: item[0], reverse=True)
         top_indices = [idx for _, idx in scored[:top_k]]
         return pd.DataFrame(rows.loc[top_indices]).reset_index(drop=True)
+
+
 
 
 class LanceDBDirectRetriever(BaseRetriever):
@@ -102,3 +102,5 @@ def Hybrid_search(query, table, embedding_manager, top_k=1):
     except Exception:
         # Linux CI / tiny tables: keep lexical retrieval working if vector leg fails.
         return bm25_retriever.invoke(query)
+
+

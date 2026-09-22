@@ -308,4 +308,4 @@ if __name__ == "__main__":
 #pip install fastapi "uvicorn[standard]" pydantic
 #cd D:\LLMOps\pyfiles
 #python modelapi_app.py    
-#uvicorn modelapi_app:app --host 0.0.0.0 --port 8000  
+#uvicorn modelapi_app:app --host 0.0.0.0 --port 8000
