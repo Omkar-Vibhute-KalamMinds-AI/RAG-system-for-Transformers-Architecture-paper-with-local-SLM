@@ -12,7 +12,6 @@ Run:
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -282,7 +281,9 @@ class TestConfigRetrievalIntegration:
         from config_loader import load_config
 
         cfg = load_config()
-        assert Path(cfg["vectordb"]["path"]).anchor  # absolute or relative path string
+        # Paths in config.yaml may be Windows-style; do not use Path.anchor
+        # (empty on Linux CI for D:\... strings).
+        assert isinstance(cfg["vectordb"]["path"], str) and cfg["vectordb"]["path"].strip()
         assert cfg["vectordb"]["table"]
         assert cfg["retriever"]["top_k"] >= 1
         assert 0.0 <= cfg["retriever"]["min_score"] <= 1.0
