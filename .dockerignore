@@ -1,0 +1,37 @@
+.git
+.github
+.cursor
+.pytest_cache
+.venv
+venv
+__pycache__
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+*.egg-info
+.mypy_cache
+
+tests
+notebook
+lance_db
+RAG Learn
+LLMOps
+logs
+uploads
+models
+
+Dockerfile.txt
+get-pip.py
+job_logs.zip
+integration_out.txt
+uv.lock
+*.log
+
+# Model weights if they ever sit in the build context
+**/*.safetensors
+**/*.bin
+**/*.pt
+**/*.pth
+**/*.onnx
+**/.cache

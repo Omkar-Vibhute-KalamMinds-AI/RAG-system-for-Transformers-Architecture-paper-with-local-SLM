@@ -1,5 +1,3 @@
-import os
-import sys
 import time
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -21,13 +19,14 @@ from config_loader import load_config
 #-----------------------------
 
 config = load_config()
-MODEL_PATH = os.environ.get("GEMMA_MODEL_PATH", config["llm"]["local_path"])
+MODEL_PATH = config["llm"]["local_path"]
 LLM_TEMPERATURE = config["llm"].get("temperature", 0.4)
 LLM_MAX_NEW_TOKENS = config["llm"].get("max_new_tokens", 1024)
 LLM_DO_SAMPLE = config["llm"].get("do_sample", True)
 RETRIEVER_TOP_K = config["retriever"]["top_k"]
 RETRIEVER_MIN_SCORE = config["retriever"]["min_score"]
 PIPELINE_USE_HISTORY = config["AdvancedRAGPipeline"].get("use_history", True)
+PIPELINE_USE_QUERY_VARIATIONS = config["AdvancedRAGPipeline"].get("use_query_variations", Falses)
 PIPELINE_HISTORY_WINDOW = config["AdvancedRAGPipeline"].get("history_window", 1)
 PIPELINE_STREAM = config["AdvancedRAGPipeline"].get("stream", True)
 PIPELINE_SUMMARIZE = config["AdvancedRAGPipeline"].get("summarize", False)
@@ -66,6 +65,7 @@ class QueryRequest(BaseModel):
     min_score: float = Field(default=RETRIEVER_MIN_SCORE, ge=0.0, le=1.0)
     summarize: bool = PIPELINE_SUMMARIZE
     use_history: bool = PIPELINE_USE_HISTORY
+    use_query_variations: bool = PIPELINE_USE_QUERY_VARIATIONS
     stream: bool = PIPELINE_STREAM
     max_new_tokens: int = Field(default=LLM_MAX_NEW_TOKENS, ge=1, le=4096)
 
@@ -97,6 +97,7 @@ async def lifespan(app: FastAPI):
         processor,
         use_history=PIPELINE_USE_HISTORY,
         history_window=PIPELINE_HISTORY_WINDOW,
+        use_query_variations=PIPELINE_USE_QUERY_VARIATIONS,
     )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Model ready on {device}")
@@ -113,7 +114,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -138,8 +139,15 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 @app.get("/", include_in_schema=False)
 def index():
+    index_file = STATIC_DIR / "index.html"
+    if not index_file.is_file():
+        return {
+            "service": "llmops-api",
+            "docs": "/docs",
+            "health": "/health",
+        }
     return FileResponse(
-        STATIC_DIR / "index.html",
+        index_file,
         headers={"Cache-Control": "no-store"},
     )
 
@@ -168,6 +176,7 @@ def public_config():
         },
         "pipeline": {
             "use_history": PIPELINE_USE_HISTORY,
+            "use_query_variations": PIPELINE_USE_QUERY_VARIATIONS,
             "history_window": PIPELINE_HISTORY_WINDOW,
             "stream": PIPELINE_STREAM,
             "summarize": PIPELINE_SUMMARIZE,
@@ -258,6 +267,7 @@ def query(request: QueryRequest):
     start = time.time()
     try:
         pipeline.use_history = request.use_history
+        pipeline.use_query_variations = request.use_query_variations
         pipeline.history_window = PIPELINE_HISTORY_WINDOW
         result = pipeline.query(
             request.question,
@@ -265,6 +275,7 @@ def query(request: QueryRequest):
             min_score=request.min_score,
             stream=False,
             summarize=request.summarize,
+            use_query_variations=request.use_query_variations,
         )
         return QueryResponse(
             question=result["question"],
@@ -283,6 +294,7 @@ def query(request: QueryRequest):
 def query_stream(request: QueryRequest):
     _ensure_loaded()
     pipeline.use_history = request.use_history
+    pipeline.use_query_variations = request.use_query_variations
     pipeline.history_window = PIPELINE_HISTORY_WINDOW
 
     def event_stream():
@@ -295,6 +307,7 @@ def query_stream(request: QueryRequest):
                 min_score=request.min_score,
                 summarize=request.summarize,
                 max_new_tokens=request.max_new_tokens,
+                use_query_variations=request.use_query_variations,
             ):
                 yield chunk
         except Exception as e:
@@ -307,7 +320,8 @@ def query_stream(request: QueryRequest):
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+if STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 #-----------------------------
 if __name__ == "__main__":

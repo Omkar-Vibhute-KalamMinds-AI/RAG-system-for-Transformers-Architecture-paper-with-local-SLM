@@ -1,28 +1,26 @@
 embedding model:
   embedmodel_name: 'TextEmbed-multilingual-e5-large'
-  local_path: 'D:\LLMOps\RAG Learn\Models\intfloat-multilingual-e5-large'
+  local_path: '/models/embed'
 
-llm: 
+llm:
   model_name: 'kalamE2.3B-it'
-  local_path: 'D:\Gemma4 2B 4B\gemma-4-E2B-it'
+  local_path: '/models/llm'
   do_sample: True
   temperature: 0.4
   max_new_tokens: 1024
 
 vectordb:
-  path: 'D:\LLMOps\lance_db\Attention_paper_db'
-  table: 'transformer_table' 
+  path: '/data/lance_db'
+  table: 'transformer_table'
 
 retriever:
   top_k: 1
   min_score: 0.55
-  min_score_query_variation: 0.85 
- 
+  min_score_query_variation: 0.85
+
 AdvancedRAGPipeline:
   use_history: True
-  use_query_variations: False
+  use_query_variations: True
   history_window: 1
   stream: True
   summarize: False
-
-

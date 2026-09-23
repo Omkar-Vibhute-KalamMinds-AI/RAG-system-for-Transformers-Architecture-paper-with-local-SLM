@@ -1,0 +1,46 @@
+services:
+  base:
+    image: llmops-base:cpu
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.base
+    command: ["true"]
+    restart: "no"
+    healthcheck:
+      disable: true
+
+  api:
+    image: llmops-api:cpu
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+      additional_contexts:
+        "llmops-base:cpu": service:base
+    restart: unless-stopped
+    environment:
+      LLMOPS_CONFIG: config.docker.yaml
+      GEMMA_MODEL_PATH: /models/llm
+      EMBED_MODEL_PATH: /models/embed
+      LANCEDB_PATH: /data/lance_db
+      LANCEDB_TABLE: transformer_table
+      LOG_DIR: /app/logs
+    volumes:
+      - ${LLM_HOST_PATH:-./models/llm}:/models/llm:ro
+      - ${EMBED_HOST_PATH:-./models/embed}:/models/embed:ro
+      - ${LANCEDB_HOST_PATH:-./lance_db/Attention_paper_db}:/data/lance_db
+      - ${LOG_HOST_PATH:-./logs}:/app/logs
+    # Optional direct API access: uncomment to publish 8000.
+    # ports:
+    #   - "8000:8000"
+
+  web:
+    image: llmops-web:cpu
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy

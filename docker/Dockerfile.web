@@ -1,0 +1,11 @@
+FROM nginx:alpine
+
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY pyfiles/static/index.html /usr/share/nginx/html/index.html
+COPY pyfiles/static/app.js /usr/share/nginx/html/static/app.js
+COPY pyfiles/static/styles.css /usr/share/nginx/html/static/styles.css
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD wget -qO- http://127.0.0.1/ >/dev/null || exit 1

@@ -35,9 +35,25 @@ class TestConfigLoader:
         """Misplaced config should fail loudly instead of silently using wrong models."""
         from config_loader import load_config
 
+        monkeypatch.delenv("LLMOPS_CONFIG", raising=False)
+        monkeypatch.delenv("CONFIG_PATH", raising=False)
         monkeypatch.setattr("config_loader._project_root", tmp_path)
         with pytest.raises(FileNotFoundError):
             load_config("nope.yaml")
+
+    def test_load_config_env_overrides_paths(self, monkeypatch):
+        """Docker/compose injects Linux paths without rewriting config.yaml."""
+        from config_loader import load_config
+
+        monkeypatch.setenv("GEMMA_MODEL_PATH", "/models/llm")
+        monkeypatch.setenv("EMBED_MODEL_PATH", "/models/embed")
+        monkeypatch.setenv("LANCEDB_PATH", "/data/lance_db")
+        monkeypatch.setenv("LANCEDB_TABLE", "transformer_table")
+        cfg = load_config()
+        assert cfg["llm"]["local_path"] == "/models/llm"
+        assert cfg["embedding model"]["local_path"] == "/models/embed"
+        assert cfg["vectordb"]["path"] == "/data/lance_db"
+        assert cfg["vectordb"]["table"] == "transformer_table"
 
 # ---------------------------------------------------------------------------
 # exception — operational errors must carry file/line for log triage
@@ -325,6 +341,22 @@ class TestAdvancedRAGPipeline:
         assert "Hello" in joined
         assert "Citations:" in joined
         assert "paper.pdf" in joined
+
+    def test_query_skips_variations_when_disabled(self, pipeline):
+        """Optional query expansion must not call the LLM paraphraser when turned off."""
+        pipeline.retriever.retrieve.return_value = []
+        with patch("app.query_variations") as qv:
+            pipeline.query("hello?", stream=False, use_query_variations=False)
+        qv.assert_not_called()
+        pipeline.retriever.retrieve.assert_called_once_with("hello?", top_k=pipeline.default_top_k)
+
+    def test_query_uses_variations_when_enabled(self, pipeline):
+        """When enabled, original question plus paraphrases are both retrieved."""
+        pipeline.retriever.retrieve.return_value = []
+        with patch("app.query_variations", return_value=["paraphrase of hello"]) as qv:
+            pipeline.query("hello?", stream=False, use_query_variations=True)
+        qv.assert_called_once_with("hello?")
+        assert pipeline.retriever.retrieve.call_count == 2
 # ---------------------------------------------------------------------------
 # modelapi_app — FastAPI contract (health, config, validation, 503 when unloaded)
 # ---------------------------------------------------------------------------

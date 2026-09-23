@@ -224,6 +224,7 @@ __marimo__/
 # Runtime logs (see pyfiles/logger.py)
 **/RAGOpsLogings/
 LLMOps/RAGOpsLogings/
+logs/
 
 # Secrets and local environment
 .env

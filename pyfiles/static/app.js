@@ -17,6 +17,7 @@ const els = {
   minScore: document.getElementById("minScore"),
   doSample: document.getElementById("doSample"),
   useHistory: document.getElementById("useHistory"),
+  useQueryVariations: document.getElementById("useQueryVariations"),
   summarize: document.getElementById("summarize"),
   ragControls: document.getElementById("ragControls"),
   modeHint: document.getElementById("modeHint"),
@@ -548,6 +549,9 @@ async function loadDefaults() {
     els.topK.value = cfg.retriever.top_k;
     els.minScore.value = cfg.retriever.min_score;
     els.useHistory.checked = cfg.pipeline.use_history;
+    if (els.useQueryVariations) {
+      els.useQueryVariations.checked = cfg.pipeline.use_query_variations !== false;
+    }
     els.summarize.checked = cfg.pipeline.summarize;
     syncLabels();
   } catch {
@@ -594,6 +598,7 @@ async function runQueryStream(question, bodyEl) {
       min_score: Number(els.minScore.value),
       summarize: els.summarize.checked,
       use_history: els.useHistory.checked,
+      use_query_variations: els.useQueryVariations ? els.useQueryVariations.checked : true,
       max_new_tokens: Number(els.maxTokens.value),
       stream: true,
     }),

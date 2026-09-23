@@ -1,0 +1,32 @@
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    LLMOPS_CONFIG=config.docker.yaml \
+    GEMMA_MODEL_PATH=/models/llm \
+    EMBED_MODEL_PATH=/models/embed \
+    LANCEDB_PATH=/data/lance_db \
+    LANCEDB_TABLE=transformer_table \
+    LOG_DIR=/app/logs
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml README.md ./
+COPY pyfiles ./pyfiles
+COPY config.yaml config.docker.yaml ./
+
+# Library image: API entrypoint and UI live in llmops-api / llmops-web.
+RUN rm -f pyfiles/modelapi_app.py \
+    && rm -rf pyfiles/static
+
+RUN python -m pip install --upgrade pip \
+    && pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu \
+    && pip install .
+
+# Build parent only — do not compose this as a service.
+CMD ["python", "-c", "raise SystemExit('llmops-base is a build parent, not a runtime service')"]

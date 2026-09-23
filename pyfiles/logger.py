@@ -3,8 +3,8 @@ import logging
 import os
 from datetime import datetime
 
-LOG_DIR = "LLMOps/RAGOpsLogings" 
-os.makedirs(LOG_DIR, exist_ok=True)  
+LOG_DIR = os.environ.get("LOG_DIR", "LLMOps/RAGOpsLogings")
+os.makedirs(LOG_DIR, exist_ok=True)
 
 LOG_FILE = os.path.join(
     LOG_DIR,
@@ -18,4 +18,3 @@ logging.basicConfig(
     )
 
 logger = logging.getLogger('__main__')
-

@@ -40,11 +40,20 @@ from transformers import TextIteratorStreamer
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class AdvancedRAGPipeline:
-    def __init__(self, retriever, model, processor, use_history: bool = True, history_window: int = 3):
+    def __init__(
+        self,
+        retriever,
+        model,
+        processor,
+        use_history: bool = True,
+        history_window: int = 3,
+        use_query_variations: bool = True,
+    ):
         """
         use_history: system-level setting — if False, conversation history is never
                      tracked or included in prompts, regardless of what happens during queries.
         history_window: number of previous turns to include in the prompt when use_history is True.
+        use_query_variations: if False, retrieve only with the original question (skip LLM paraphrases).
         """
         self.retriever = retriever
         self.model = model
@@ -52,6 +61,7 @@ class AdvancedRAGPipeline:
         pipeline_cfg = config["AdvancedRAGPipeline"]
         self.use_history = pipeline_cfg.get("use_history", use_history)
         self.history_window = pipeline_cfg.get("history_window", history_window)
+        self.use_query_variations = pipeline_cfg.get("use_query_variations", use_query_variations)
         self.history = []
         self.default_top_k = config["retriever"]["top_k"]
         self.default_min_score = config["retriever"]["min_score"]
@@ -144,12 +154,17 @@ class AdvancedRAGPipeline:
                 results.append(doc)
         return results
 
-    def _prepare_query(self, question: str, top_k: int = None) -> dict:
+    def _prepare_query(self, question: str, top_k: int = None, use_query_variations: bool = None) -> dict:
         """Retrieve context and build the RAG prompt (shared by JSON and streaming)."""
         if top_k is None:
             top_k = self.default_top_k
-        variations = query_variations(question)
-        search_queries = [question] + [v for v in (variations or []) if v != question]
+        if use_query_variations is None:
+            use_query_variations = self.use_query_variations
+
+        variations = []
+        if use_query_variations:
+            variations = query_variations(question) or []
+        search_queries = [question] + [v for v in variations if v != question]
         results = self._collect_hits(search_queries, top_k)
         sources = []
         context = ""
@@ -169,12 +184,21 @@ class AdvancedRAGPipeline:
             for turn in self.history[-self.history_window:]:
                 history_text += f"Previous Question: {turn['question']}\nPrevious Answer: {turn['answer']}\n\n"
 
-        variation_text = "; ".join(variations) if variations else "none"
-        prompt = f""" System_role: You are a enterprise ai assistant to a company, you reffer the user as Sir.
+        if use_query_variations and variations:
+            variation_text = "; ".join(variations)
+            prompt = f""" System_role: You are a enterprise ai assistant to a company, you reffer the user as Sir.
 
         Use the following context and conversation history and variations of the original query, which are semantically similar in meaning,
         to answer the question concisely.
         Variations of the original query: {variation_text}
+        Conversation history: {history_text}
+        Context: {context}
+        Question: {question}
+        """
+        else:
+            prompt = f""" System_role: You are a enterprise ai assistant to a company, you reffer the user as Sir.
+
+        Use the following context and conversation history to answer the question concisely.
         Conversation history: {history_text}
         Context: {context}
         Question: {question}
@@ -204,9 +228,12 @@ class AdvancedRAGPipeline:
         min_score: float = None,
         summarize: bool = None,
         max_new_tokens: int = None,
+        use_query_variations: bool = None,
     ):
         """Yield RAG answer tokens as they are generated, then citations."""
-        prepared = self._prepare_query(question, top_k=top_k)
+        prepared = self._prepare_query(
+            question, top_k=top_k, use_query_variations=use_query_variations
+        )
         sources = prepared["sources"]
         if not prepared["results"]:
             yield "No relevant context found"
@@ -230,13 +257,23 @@ class AdvancedRAGPipeline:
             summary = self.generate(f"Summarize the following answer in 2 sentences: \n{answer}")
         self._record_history(question, answer, sources, summary)
 
-    def query(self, question: str, top_k: int = None, min_score: float = None, stream: bool = None, summarize: bool = None) -> dict:
+    def query(
+        self,
+        question: str,
+        top_k: int = None,
+        min_score: float = None,
+        stream: bool = None,
+        summarize: bool = None,
+        use_query_variations: bool = None,
+    ) -> dict:
         if stream is None:
             stream = self.default_stream
         if summarize is None:
             summarize = self.default_summarize
 
-        prepared = self._prepare_query(question, top_k=top_k)
+        prepared = self._prepare_query(
+            question, top_k=top_k, use_query_variations=use_query_variations
+        )
         sources = prepared["sources"]
         results = prepared["results"]
         prompt = prepared["prompt"]
