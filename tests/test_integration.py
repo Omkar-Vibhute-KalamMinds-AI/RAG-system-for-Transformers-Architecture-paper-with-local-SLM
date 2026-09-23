@@ -177,7 +177,11 @@ class TestPipelineIntegration:
             ]
         )
         with patch("app.query_variations", return_value=["transformer attention layers"]):
-            integration_pipeline.query("What is attention?", stream=False)
+            integration_pipeline.query(
+                "What is attention?",
+                stream=False,
+                use_query_variations=True,
+            )
 
         assert integration_pipeline.retriever.retrieve.call_count >= 2
 
