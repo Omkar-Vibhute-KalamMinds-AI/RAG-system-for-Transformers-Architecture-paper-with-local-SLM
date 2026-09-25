@@ -79,7 +79,7 @@ class AdvancedRAGPipeline:
             messages = prompt_text
         inputs = self.processor.apply_chat_template(
             messages,
-            add_generation_prompt=True,
+            add_generation_prompt=True,  
             tokenize=True,
             return_dict=True,
             return_tensors="pt"
@@ -179,6 +179,7 @@ class AdvancedRAGPipeline:
                 "preview": doc["content"][:120] + "...",
             } for doc in results]
 
+        #---------------------------------------------------
         history_text = ""
         if self.use_history:
             for turn in self.history[-self.history_window:]:
@@ -243,7 +244,7 @@ class AdvancedRAGPipeline:
         answer_parts = []
         for chunk in self.generate_streaming(prepared["prompt"], max_new_tokens=max_new_tokens):
             answer_parts.append(chunk)
-            yield chunk
+            yield chunk     
 
         citations = self._citations_suffix(sources)
         if citations:

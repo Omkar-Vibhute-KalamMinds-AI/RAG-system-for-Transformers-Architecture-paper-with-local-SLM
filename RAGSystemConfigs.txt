@@ -1,0 +1,26 @@
+## HybridSearch 
+
+* _SMALL_TABLE_ROWS is a size cutoff, not a search parameter.
+
+    LanceDB’s native table.search(...) is ANN (approximate nearest neighbor). 
+    That path expects a real index. 
+    Tiny tables — like the few rows in Linux CI / integration tests — often have no usable index, 
+    so native search can fail, return empty, or throw. 
+
+    _vector_search_dataframe does this:
+
+    - If count_rows() <= 64 → skip Lance search and run brute-force cosine over every row 
+                      (_cosine_search).
+
+    - If the table is larger → use native Lance search.
+
+    - If native search still errors → cosine fallback again.
+
+* LocalBM25Retriever class: 
+
+    Lexical BM25 retriever backed by rank_bm25, built localy
+
+    LangChain's BM25Retriever lives in langchain_community (deprecated re-exports
+    from langchain_classic). This module keeps the same from_documents / .k API used by
+    HybridSearch while depending only on rank_bm25 + langchain_core.
+

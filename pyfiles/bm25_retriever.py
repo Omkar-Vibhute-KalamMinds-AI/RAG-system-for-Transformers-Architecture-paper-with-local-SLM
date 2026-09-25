@@ -1,12 +1,12 @@
 """
-Lexical BM25 retriever backed by rank_bm25 (no langchain_community).
+Lexical BM25 retriever backed by rank_bm25 .
 
 Why: LangChain's BM25Retriever lives in langchain_community (deprecated re-exports
 from langchain_classic). This module keeps the same from_documents / .k API used by
 HybridSearch while depending only on rank_bm25 + langchain_core.
 """
 
-from __future__ import annotations
+from __future__ import annotations #python 3.10
 
 from typing import Any, Callable, Dict, Iterable, List, Optional
 

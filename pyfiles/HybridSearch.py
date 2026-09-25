@@ -12,8 +12,9 @@ from bm25_retriever import LocalBM25Retriever
 
 _SMALL_TABLE_ROWS = 64
 
+#--------------------------------------------------
 
-def _cosine_search_pandas(table, query_embedding: np.ndarray, top_k: int):
+def _cosine_brute_force_search(table, query_embedding: np.ndarray, top_k: int):
     rows = table.to_pandas()
     if rows.empty:
         return rows
@@ -40,21 +41,15 @@ def _vector_search_dataframe(table, query_embedding: np.ndarray, top_k: int):
         n_rows = None
 
     if isinstance(n_rows, int) and n_rows <= _SMALL_TABLE_ROWS:
-        return _cosine_search_pandas(table, query_embedding, top_k)
+        return _cosine_brute_force_search(table, query_embedding, top_k)
 
     try:
-        return (
-            table.search(query_embedding, vector_column_name="vector")
-            .limit(top_k)
-            .to_pandas()
-        )
+        return table.search(query_embedding, vector_column_name="vector").to_pandas()
     except Exception:
-        return _cosine_search_pandas(table, query_embedding, top_k)
+        return _cosine_brute_force_search(table, query_embedding, top_k)
 
 
-
-
-class LanceDBDirectRetriever(BaseRetriever):
+class LanceDBVectorRetriever(BaseRetriever):
     table: object = Field(...)
     embedding_manager: object = Field(...)
     top_k: int = 1
@@ -76,14 +71,14 @@ class LanceDBDirectRetriever(BaseRetriever):
                         "id": row["id"],
                         "chunk_index": row["chunk_index"],
                         "source_file": row["source_file"],
-
                     },
                 )
             )
         return docs
 
+#--------------------------------------------------
 
-def _bm25_documents_from_table(table):
+def _bm25_documents(table):
     all_rows = table.to_pandas()
     return [
         Document(
@@ -97,13 +92,12 @@ def _bm25_documents_from_table(table):
         for _, row in all_rows.iterrows()
     ]
 
-
 def Hybrid_search(query, table, embedding_manager, top_k=1):
-    bm25_retriever = LocalBM25Retriever.from_documents(_bm25_documents_from_table(table))
+    bm25_retriever = LocalBM25Retriever.from_documents(_bm25_documents(table))
     bm25_retriever.k = top_k
 
     try:
-        vector_retriever = LanceDBDirectRetriever(
+        vector_retriever = LanceDBVectorRetriever(
             table=table,
             embedding_manager=embedding_manager,
             top_k=top_k,

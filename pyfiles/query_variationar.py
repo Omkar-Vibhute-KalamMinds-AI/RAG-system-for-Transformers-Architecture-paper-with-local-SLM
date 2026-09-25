@@ -7,6 +7,7 @@ from ModelLoader import load_model
 from logger import logger
 import numpy as np 
 
+
 config = load_config()
 MIN_QUERY_SIM = config["retriever"]["min_score_query_variation"]
 _embedding_manager = None
@@ -15,12 +16,10 @@ processor = None
 tokenizer = None
 model = None
 
-
 def attach_embedding_manager(manager: EmbeddingManager):
     """Reuse the embedder from app.py so it is not loaded twice."""
     global _embedding_manager
     _embedding_manager = manager
-
 
 def _get_embedding_manager():
     global _embedding_manager
@@ -67,7 +66,7 @@ def _generate_text(prompt_text, max_new_tokens=256, temperature=0.8):
     new_tokens = outputs[0][inputs["input_ids"].shape[-1] :]
     return tok.decode(new_tokens, skip_special_tokens=True).strip()
 
-
+#--------------------------------
 def query_veriation_generator(query):
     prompt = f"""Generate two different in-context variational queries
 of the original query. You may only reorder keywords or add reasonable
@@ -91,7 +90,7 @@ Respond with a Python list only, e.g. ['query1', 'query2'] whose data type is py
             pass
 
     return [line.strip(" -*\t") for line in text.splitlines() if line.strip()]
-
+#--------------------------------
 
 def query_variations(original_query, min_sim=MIN_QUERY_SIM):
     try:

@@ -3,7 +3,6 @@ import sys
 import pyfiles_path  # noqa: F401
 from typing import List, Dict, Any 
 import lancedb
-from EmbedModelLoader import EmbeddingManager 
 from exception import RetrievialSystemException
 from logger import logger  
 from HybridSearch import Hybrid_search
