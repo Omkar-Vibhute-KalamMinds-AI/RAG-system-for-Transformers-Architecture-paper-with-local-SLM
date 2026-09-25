@@ -137,19 +137,19 @@ class TestQueryVariations:
 # HybridSearch — vector retriever maps LanceDB rows → LangChain Documents
 # ---------------------------------------------------------------------------
 class TestHybridSearch:
-    def test_lancedb_direct_retriever_maps_rows_to_documents(self, sample_chunk_record):
+    def test_lancedb_vector_retriever_maps_rows_to_documents(self, sample_chunk_record):
         """Ensemble retrieval depends on consistent metadata keys (id, chunk_index, source_file)."""
-        from HybridSearch import LanceDBDirectRetriever
+        from HybridSearch import LanceDBVectorRetriever
 
         row_df = pd.DataFrame([sample_chunk_record])
         mock_table = MagicMock()
-        chain = mock_table.search.return_value.limit.return_value
-        chain.to_pandas.return_value = row_df
+        mock_table.count_rows.return_value = 100
+        mock_table.search.return_value.to_pandas.return_value = row_df
 
         mock_emb = MagicMock()
         mock_emb.generate_embeddings.return_value = np.array([[0.1, 0.2, 0.3]])
 
-        retriever = LanceDBDirectRetriever(
+        retriever = LanceDBVectorRetriever(
             table=mock_table, embedding_manager=mock_emb, top_k=1
         )
         docs = retriever._get_relevant_documents("transformer attention")
