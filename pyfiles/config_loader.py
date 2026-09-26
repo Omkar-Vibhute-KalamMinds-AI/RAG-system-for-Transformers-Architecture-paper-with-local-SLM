@@ -12,7 +12,6 @@ _ENV_OVERRIDES = (
     ("LANCEDB_TABLE", ("vectordb", "table")),
 )
 
-
 def _config_path(config_name: str | None) -> Path:
     if config_name is None:
         config_name = os.environ.get("LLMOPS_CONFIG") or os.environ.get("CONFIG_PATH") or "config.yaml"
@@ -48,7 +47,6 @@ def load_config(config_name: str | None = None) -> dict:
         raise ValueError(f"Config file is empty: {config_path}")
 
     return _apply_env_overrides(config)
-
 
 if __name__ == "__main__":
     print(_project_root)

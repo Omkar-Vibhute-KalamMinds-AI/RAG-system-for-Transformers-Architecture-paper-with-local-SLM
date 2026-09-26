@@ -79,3 +79,15 @@ class RetrievialSystemException(CustomException):
         super().__init__(error_message, error_detail)
         self.error_message = f"[RetrievalSystem Error] {self.error_message}"
         
+class BM25RetrieverException(CustomException):
+    """Raised when BM25Retriever fails."""
+    def __init__(self, error_message, error_detail: sys):
+        super().__init__(error_message, error_detail)
+        self.error_message = f"[BM25Retriever Error] {self.error_message}" 
+
+class HybridSearchException(CustomException):
+    """Raised when HybridSearch fails."""
+    def __init__(self, error_message, error_detail: sys):
+        super().__init__(error_message, error_detail)
+        self.error_message = f"[HybridSearch Error] {self.error_message}"  
+

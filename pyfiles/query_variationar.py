@@ -25,7 +25,7 @@ def _get_embedding_manager():
     global _embedding_manager
     if _embedding_manager is None:
         path = config["embedding model"]["local_path"]
-        logger.info(f"Loading embedding model for query variations from {path}")
+    #    logger.info(f"Loading embedding model for query variations from {path}")
         _embedding_manager = EmbeddingManager(embedmodel_path=path)
     return _embedding_manager
 
@@ -42,7 +42,7 @@ def _ensure_llm():
 
     if model is None:
         local_path = config["llm"]["local_path"]
-        logger.info(f"Loading LLM for query variations from {local_path}")
+    #    logger.info(f"Loading LLM for query variations from {local_path}")
         processor, tokenizer, model = load_model(local_path)
     return processor, tokenizer, model
 
